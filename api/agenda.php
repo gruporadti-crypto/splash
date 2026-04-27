@@ -1,7 +1,7 @@
 <?php
 // --- CONFIGURAÇÕES DE CONEXÃO SUPABASE ---
 $host     = 'xzemserhahccodubenfj.supabase.co';
-$port     = '6543'; 
+$port     = '5432'; 
 $dbname   = 'postgres';
 $user     = 'postgres';
 $password = 'oJxh3BlVcVIuRIW1';
