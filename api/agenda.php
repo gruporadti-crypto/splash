@@ -95,10 +95,23 @@ if ($medico_id) {
         .header-dr { text-align: center; padding: 20px; }
         .header-dr h2 { margin: 0; font-size: 1.3rem; }
         .header-dr p { color: #888; margin: 0; font-size: 0.85rem; }
+         /* Estilos da sua agenda... */
+        .db-status { position: fixed; bottom: 10px; right: 10px; font-size: 10px; padding: 4px 8px; border-radius: 10px; z-index: 999; }
+        .db-online { background: #28a745; color: white; opacity: 0.7; }
+        .db-offline { background: #dc3545; color: white; }
     </style>
 </head>
 <body>
-
+<!-- INDICADOR DISCRETO NO CANTO DA TELA -->
+    <?php if($db_ok): ?>
+        <div class="db-status db-online">Sistema Online</div>
+    <?php else: ?>
+        <div class="db-status db-offline">Sistema em Manutenção (DB Offline)</div>
+        <div style="text-align:center; margin-top:50px; color:red;">
+             <h3>Desculpe, nosso sistema está temporariamente fora do ar.</h3>
+             <p>Por favor, tente novamente em alguns instantes.</p>
+        </div>
+    <?php exit; endif; ?>
 <?php if ($promo && !isset($_GET['nopro'])): ?>
 <div class="promo-overlay" id="pop">
     <div class="promo-box">
