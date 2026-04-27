@@ -1,6 +1,9 @@
 {
   "functions": {
-    "api/*.php": {
+    "index.php": {
+      "runtime": "vercel-php@0.7.1"
+    },
+    "agenda.php": {
       "runtime": "vercel-php@0.7.1"
     }
   },
