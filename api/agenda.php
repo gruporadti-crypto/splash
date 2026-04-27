@@ -1,6 +1,6 @@
 <?php
 // --- CONFIGURAÇÕES DE CONEXÃO SUPABASE ---
-$host     = 'aws-0-sa-east-1.pooler.supabase.co';
+$host     = 'xzemserhahccodubenfj.supabase.co';
 $port     = '6543'; 
 $dbname   = 'postgres';
 $user     = 'postgres';
