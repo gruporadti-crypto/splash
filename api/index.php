@@ -5,7 +5,7 @@ session_start();
 // PARTE 1: CONEXÃO COM SUPABASE (POOLER 6543)
 // ==========================================
 $host     = 'xzemserhahccodubenfj.supabase.co'; 
-$port     = '6543'; 
+$port     = '5432'; 
 $dbname   = 'postgres';
 $user     = 'postgres.xzemserhahccodubenfj'; 
 $password = 'oJxh3BlVcVIuRIW1';
