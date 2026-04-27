@@ -3,7 +3,7 @@
 $host     = 'db.xzemserhahccodubenfj.supabase.co';
 $port     = '5432'; 
 $dbname   = 'postgres';
-$user     = 'postgres.xzemserhahccodubenfj';
+$user     = 'postgres';
 $password = 'oJxh3BlVcVIuRIW1';
 
 try {
