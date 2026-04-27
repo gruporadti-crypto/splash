@@ -25,7 +25,7 @@ if (!isset($_SESSION['logado'])) {
 
 // --- CONFIGURAÇÕES DE CONEXÃO SUPABASE ---
 $host     = 'db.xzemserhahccodubenfj.supabase.co';
-$port     = '5432'; 
+$port     = '6543'; 
 $dbname   = 'postgres';
 $user     = 'postgres';
 $password = 'oJxh3BlVcVIuRIW1';
