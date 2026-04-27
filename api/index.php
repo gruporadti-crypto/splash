@@ -23,20 +23,26 @@ if (!isset($_SESSION['logado'])) {
     }
 }
 
-// --- BANCO DE DADOS (SQLite) ---
+// --- CONFIGURAÇÕES DE CONEXÃO SUPABASE (PostgreSQL) ---
+$host     = '://supabase.co'; // Geralmente é o host do seu projeto
+$port     = '6543'; 
+$dbname   = 'postgres';
+$user     = 'postgres.xzemserhahccodubenfj';
+$password = 'oJxh3BlVcVIuRIW1';
+
 try {
-    $db = new PDO('sqlite:agenda_medica.db');
+    $dsn = "pgsql:host=$host;port=$port;dbname=$dbname";
+    $db = new PDO($dsn, $user, $password);
     $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     
-    // Criação das tabelas com a coluna cliques já inclusa
-    $db->exec("CREATE TABLE IF NOT EXISTS medicos (id INTEGER PRIMARY KEY AUTOINCREMENT, nome TEXT, especialidade TEXT, foto TEXT, cliques INTEGER DEFAULT 0)");
-    $db->exec("CREATE TABLE IF NOT EXISTS agenda (id INTEGER PRIMARY KEY AUTOINCREMENT, medico_id INTEGER, data_agenda DATE, hora_agenda TEXT, status TEXT DEFAULT 'disponivel')");
-    $db->exec("CREATE TABLE IF NOT EXISTS promocoes (id INTEGER PRIMARY KEY, foto TEXT, ativa INTEGER DEFAULT 0)");
+    // Tabelas (Sintaxe PostgreSQL: SERIAL no lugar de AUTOINCREMENT)
+    $db->exec("CREATE TABLE IF NOT EXISTS medicos (id SERIAL PRIMARY KEY, nome TEXT, especialidade TEXT, foto TEXT, cliques INTEGER DEFAULT 0)");
+    $db->exec("CREATE TABLE IF NOT EXISTS agenda (id SERIAL PRIMARY KEY, medico_id INTEGER, data_agenda DATE, hora_agenda TEXT, status TEXT DEFAULT 'disponivel')");
+    $db->exec("CREATE TABLE IF NOT EXISTS promocoes (id SERIAL PRIMARY KEY, foto TEXT, ativa INTEGER DEFAULT 0)");
 
-    // Tenta adicionar a coluna cliques caso o banco seja de uma versão muito antiga
-    try { @$db->exec("ALTER TABLE medicos ADD COLUMN cliques INTEGER DEFAULT 0"); } catch (Exception $e) { /* Coluna já existe */ }
-
-} catch (PDOException $e) { die("Erro no banco: " . $e->getMessage()); }
+} catch (PDOException $e) { 
+    die("Erro no banco Supabase: " . $e->getMessage()); 
+}
 
 if (!file_exists('uploads')) mkdir('uploads', 0777, true);
 
@@ -89,6 +95,7 @@ if ($medico_sel_id) {
     $horarios_admin = $st->fetchAll(PDO::FETCH_ASSOC);
 }
 ?>
+<!-- O RESTO DO HTML PERMANECE O MESMO -->
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
@@ -108,7 +115,7 @@ if ($medico_sel_id) {
 <body>
     <div class="panel">
         <div style="display:flex; justify-content:space-between; align-items:center;">
-            <h3>📊 Relatório de Cliques</h3>
+            <h3>📊 Relatório Supabase</h3>
             <a href="?logout=1" style="color:red; font-size:0.8rem; text-decoration:none">Sair do Painel</a>
         </div>
         
