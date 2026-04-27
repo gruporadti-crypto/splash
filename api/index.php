@@ -4,7 +4,7 @@ session_start();
 // ==========================================
 // PARTE 1: CONEXÃO COM SUPABASE (POOLER 6543)
 // ==========================================
-$host     = 'aws-0-sa-east-1.pooler.supabase.com'; 
+$host     = 'aws-0-sa-east-1.pooler.supabase.con'; 
 $port     = '6543'; 
 $dbname   = 'postgres';
 $user     = 'postgres.xzemserhahccodubenfj'; 
