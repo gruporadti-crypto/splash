@@ -5,6 +5,8 @@
     "agenda.php": { "runtime": "vercel-php@0.7.1" }
   },
   "routes": [
+    { "src": "/index", "dest": "/index.php" },
+    { "src": "/agenda", "dest": "/agenda.php" },
     { "src": "/(.*)", "dest": "/index.php" }
   ]
 }
