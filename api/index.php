@@ -24,7 +24,7 @@ if (!isset($_SESSION['logado'])) {
 }
 
 // --- CONFIGURAÇÕES DE CONEXÃO SUPABASE (PostgreSQL) ---
-$host     = 'xzemserhahccodubenfj.supabase.co'; // Geralmente é o host do seu projeto
+$host     = 'db.xzemserhahccodubenfj.supabase.co'; // Geralmente é o host do seu projeto
 $port     = '5432'; 
 $dbname   = 'postgres';
 $user     = 'postgres.xzemserhahccodubenfj';
