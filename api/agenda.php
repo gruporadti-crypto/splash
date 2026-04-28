@@ -64,25 +64,32 @@ if ($db_ok) {
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Poppins', sans-serif; margin: 0; background: #f8f9fa; display: flex; justify-content: center; }
-        .app { width: 100%; max-width: 500px; background: white; min-height: 100vh; }
+        .app { width: 100%; max-width: 500px; background: white; min-height: 100vh; position: relative; }
         .promo-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.95); z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 20px; }
         .promo-box { width: 100%; max-width: 350px; text-align: center; }
         .promo-box img { width: 100%; border-radius: 15px; }
-        .btn-close { margin-top: 20px; padding: 12px; width: 100%; background: #007bff; color: white; border: none; border-radius: 30px; font-weight: bold; }
+        .btn-close { margin-top: 20px; padding: 12px; width: 100%; background: #007bff; color: white; border: none; border-radius: 30px; font-weight: bold; cursor: pointer; }
         .doctor-nav { display: flex; overflow-x: auto; padding: 15px; gap: 15px; border-bottom: 1px solid #eee; }
         .doc { min-width: 75px; text-align: center; text-decoration: none; color: #333; opacity: 0.4; }
         .doc.active { opacity: 1; }
         .doc img { width: 60px; height: 60px; border-radius: 50%; object-fit: cover; }
         .doc.active img { border: 3px solid #007bff; }
+        .doc span { font-size: 10px; display: block; margin-top: 5px; font-weight: bold; }
         .calendar { display: flex; overflow-x: auto; padding: 15px; gap: 10px; background: #fafafa; }
         .day { min-width: 60px; padding: 12px 5px; background: white; border: 1px solid #eee; border-radius: 15px; text-align: center; text-decoration: none; color: #333; }
         .day.active { background: #007bff; color: white; }
+        .day small { font-size: 10px; text-transform: uppercase; display: block; }
         .slot { margin: 15px; padding: 15px; border: 1px solid #f0f0f0; border-radius: 18px; display: flex; justify-content: space-between; align-items: center; }
         .btn-zap { background: #25d366; color: white; padding: 8px 15px; border-radius: 10px; text-decoration: none; font-weight: bold; font-size: 13px; }
+        .db-status { position: fixed; bottom: 10px; right: 10px; font-size: 10px; padding: 4px 8px; border-radius: 10px; z-index: 999; }
+        .db-online { background: #28a745; color: white; opacity: 0.7; }
     </style>
 </head>
 <body>
 <?php if ($db_ok): ?>
+    <div class="db-status db-online">● Online</div>
+
+    <!-- O BANNER SÓ ABRE SE NÃO TIVER UM MÉDICO CLICADO NA URL -->
     <?php if ($promo && !isset($_GET['medico_id'])): ?>
     <div class="promo-overlay" id="pop">
         <div class="promo-box">
@@ -97,7 +104,7 @@ if ($db_ok) {
             <?php foreach($medicos as $m): ?>
                 <a href="?medico_id=<?= $m['id'] ?>" class="doc <?= $m['id']==$medico_id?'active':'' ?>">
                     <img src="<?= htmlspecialchars($m['foto']) ?>">
-                    <span style="display:block; font-size:10px;"><?= htmlspecialchars(explode(' ', $m['nome'])[0]) ?></span>
+                    <span><?= htmlspecialchars(explode(' ', $m['nome'])[0]) ?></span>
                 </a>
             <?php endforeach; ?>
         </div>
@@ -124,11 +131,16 @@ if ($db_ok) {
                 <?php foreach($horarios as $h): ?>
                     <div class="slot">
                         <strong><?= htmlspecialchars($h['hora_agenda']) ?></strong>
-                        <a href="https://wa.me/<?= $zap ?>?text=Agendamento: <?= urlencode($medico_atual['nome']) ?> - <?= date('d/m', strtotime($data_sel)) ?> às <?= $h['hora_agenda'] ?>" class="btn-zap">AGENDAR</a>
+                        <a href="https://wa.me/<?= $zap ?>?text=Agendamento: <?= urlencode($medico_atual['nome']) ?> - <?= date('d/m', strtotime($data_sel)) ?> às <?= $h['hora_agenda'] ?>" target="_blank" class="btn-zap">AGENDAR</a>
                     </div>
                 <?php endforeach; ?>
+                <?php if(!$horarios) echo "<p style='text-align:center; color:#ccc; margin-top:50px'>Sem horários nesta data.</p>"; ?>
             </div>
         <?php endif; ?>
+    </div>
+<?php else: ?>
+    <div style="text-align:center; padding:50px; color:red;">
+        <h3>Sistema Offline</h3>
     </div>
 <?php endif; ?>
 </body>
