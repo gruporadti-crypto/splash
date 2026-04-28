@@ -10,7 +10,7 @@ $dbname   = 'postgres';
 $user     = 'postgres.dahxpbiljzhkaxwetjza'; 
 $password = 'Xl2DbdCmESCLbSG5';
 
-// Dados para o Storage
+// Dados para o Storage (Upload de fotos)
 $supabase_url = "https://dahxpbiljzhkaxwetjza.supabase.co";
 $supabase_key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRhaHhwYmlsanpoa2F4d2V0anphIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzczMzA3MjAsImV4cCI6MjA5MjkwNjcyMH0.ZbXnuBXM3IwQr2LAoH4LDo4YFQy2IPqZMy45Ul7V1TI";
 
@@ -40,7 +40,7 @@ try {
     $erro_db = $e->getMessage();
 }
 
-// --- FUNÇÃO AUXILIAR PARA UPLOAD SUPABASE STORAGE ---
+// --- FUNÇÃO AUXILIAR PARA UPLOAD SUPABASE ---
 function subirParaSupabase($arquivo, $url, $key) {
     $nomeFinal = time() . "_" . $arquivo['name'];
     $ch = curl_init();
@@ -71,8 +71,6 @@ if (!isset($_SESSION['logado'])) {
             header("Location: index.php"); exit;
         } else { $erro_login = "Dados incorretos!"; }
     }
-    // Tela de login integrada
-    include_once('login_ui.php'); // Opcional: ou coloque o HTML de login aqui
     ?>
     <!DOCTYPE html><html lang="pt-br"><head><meta charset="UTF-8"><title>Login Admin</title>
     <style>
@@ -81,8 +79,8 @@ if (!isset($_SESSION['logado'])) {
         input { width: 100%; padding: 12px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
         button { width: 100%; padding: 12px; background: #007bff; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; }
     </style></head><body><div class="card"><h2>Área Restrita</h2>
-    <p style="font-size:10px; color:<?= $db_conectado?'green':'red'?>"><?= $db_conectado?'● Conectado ao Supabase':'● Offline: '.$erro_db ?></p>
-    <form method="POST"><?php if($erro_login) echo "<p style='color:red'>$erro_login</p>"; ?>
+    <p style="font-size:11px; font-weight:bold; color:<?= $db_conectado?'green':'red'?>"><?= $db_conectado?'● BANCO CONECTADO':'● ERRO: '.$erro_db ?></p>
+    <form method="POST"><?php if($erro_login) echo "<p style='color:red; font-size:13px'>$erro_login</p>"; ?>
     <input type="text" name="user" placeholder="Usuário" required><input type="password" name="pass" placeholder="Senha" required><button type="submit" name="login">Entrar</button></form></div></body></html>
     <?php exit;
 }
@@ -132,7 +130,7 @@ if (isset($_POST['save_promo'])) {
 }
 
 // ==========================================
-// 4. BUSCA DE DADOS PARA A TELA
+// 4. BUSCA DE DADOS
 // ==========================================
 $medicos = $db->query("SELECT * FROM medicos ORDER BY cliques DESC")->fetchAll(PDO::FETCH_ASSOC);
 $promo = $db->query("SELECT * FROM promocoes LIMIT 1")->fetch(PDO::FETCH_ASSOC);
@@ -165,7 +163,7 @@ if ($medico_sel_id) {
     <div class="panel">
         <div style="display:flex; justify-content:space-between; align-items:center;">
             <h3>📊 Relatório de Cliques</h3>
-            <a href="?logout=1" style="color:red; font-size:0.8rem; text-decoration:none">Sair do Painel</a>
+            <a href="?logout=1" style="color:red; font-size:0.8rem; text-decoration:none">Sair</a>
         </div>
         
         <div class="report">
@@ -184,7 +182,7 @@ if ($medico_sel_id) {
         </form>
         <div style="margin-top:15px">
             <?php foreach($medicos as $m): ?>
-                <div class="row"><span>Dr(a). <?= $m['nome'] ?></span> <a href="?del_medico=<?= $m['id'] ?>" onclick="return confirm('Excluir médico e toda sua agenda?')" style="color:red; text-decoration:none">Excluir</a></div>
+                <div class="row"><span>Dr(a). <?= $m['nome'] ?></span> <a href="?del_medico=<?= $m['id'] ?>" onclick="return confirm('Excluir médico?')" style="color:red; text-decoration:none">Excluir</a></div>
             <?php endforeach; ?>
         </div>
 
@@ -202,10 +200,9 @@ if ($medico_sel_id) {
             <button type="submit" name="add_agenda" style="background:#28a745">Adicionar Vaga</button>
         </form>
         <div style="margin-top:15px; background: #fafafa; padding: 10px; border-radius: 8px;">
-            <small>Horários configurados:</small>
             <?php foreach($horarios_admin as $ha): ?>
                 <div class="row"><span><?= $ha['hora_agenda'] ?></span> <a href="?del_agenda=<?= $ha['id'] ?>&med_id=<?= $medico_sel_id ?>&data=<?= $data_sel ?>" style="color:red; text-decoration:none">Remover</a></div>
-            <?php endforeach; if(!$horarios_admin) echo "<br><small>Nenhum horário para este dia.</small>"; ?>
+            <?php endforeach; ?>
         </div>
 
         <hr>
@@ -217,7 +214,6 @@ if ($medico_sel_id) {
         </form>
     </div>
 
-    <!-- PREVIEW LATERAL (ESTILO CELULAR) -->
     <div class="preview">
         <iframe src="agenda.php?medico_id=<?= $medico_sel_id ?>&data=<?= $data_sel ?>" style="width:100%; height:100%; border:none"></iframe>
     </div>
