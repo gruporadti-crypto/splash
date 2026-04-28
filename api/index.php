@@ -115,18 +115,23 @@ if (isset($_POST['add_agenda'])) {
     $db->prepare("INSERT INTO agenda (medico_id, data_agenda, hora_agenda) VALUES (?, ?, ?)")->execute([$_POST['medico_id'], $_POST['data'], $_POST['hora']]);
 }
 
-// Salvar Promoção (Popup)
+// Salvar Promoção (Popup) - Lógica Corrigida
 if (isset($_POST['save_promo'])) {
     $ativa = isset($_POST['ativa']) ? 1 : 0;
+    $promo_existente = $db->query("SELECT id, foto FROM promocoes LIMIT 1")->fetch(PDO::FETCH_ASSOC);
+
     if (isset($_FILES['foto_promo']) && $_FILES['foto_promo']['error'] === 0) {
-        $foto_p = subirParaSupabase($_FILES['foto_promo'], $supabase_url, $supabase_key);
-        if ($foto_p) {
+        $url_foto_nova = subirParaSupabase($_FILES['foto_promo'], $supabase_url, $supabase_key);
+        if ($url_foto_nova) {
             $db->exec("DELETE FROM promocoes");
-            $db->prepare("INSERT INTO promocoes (foto, ativa) VALUES (?, ?)")->execute([$foto_p, $ativa]);
+            $db->prepare("INSERT INTO promocoes (foto, ativa) VALUES (?, ?)")->execute([$url_foto_nova, $ativa]);
         }
     } else {
-        $db->prepare("UPDATE promocoes SET ativa = ? WHERE id = (SELECT id FROM promocoes LIMIT 1)")->execute([$ativa]);
+        if ($promo_existente) {
+            $db->prepare("UPDATE promocoes SET ativa = ? WHERE id = ?")->execute([$ativa, $promo_existente['id']]);
+        }
     }
+    header("Location: index.php"); exit;
 }
 
 // ==========================================
