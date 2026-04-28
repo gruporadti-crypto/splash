@@ -5,18 +5,18 @@
       "runtime": "vercel-php@0.7.1"
     }
   },
-  "routes": [
+  "rewrites": [
     {
-      "src": "/agenda.php",
-      "dest": "/api/agenda.php"
+      "source": "/",
+      "destination": "/api/agenda.php"
     },
     {
-      "src": "/index.php",
-      "dest": "/api/index.php"
+      "source": "/index.php",
+      "destination": "/api/index.php"
     },
     {
-      "src": "/",
-      "dest": "/api/agenda.php"
+      "source": "/agenda.php",
+      "destination": "/api/agenda.php"
     }
   ]
 }
