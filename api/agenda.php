@@ -1,72 +1,67 @@
 <?php
-
 // ==========================================
-// PARTE 1: CONEXÃO COM OS DADOS DA SUA VERCEL
+// PARTE 1: CONEXÃO COM OS DADOS DO SUPABASE
 // ==========================================
 $host     = 'aws-1-us-east-1.pooler.supabase.com'; 
 $port     = '6543'; 
 $dbname   = 'postgres';
-$user     = 'postgres.dahxpbiljzhkaxwetjza'; // Usuário completo conforme sua URL
-$password = 'Xl2DbdCmESCLbSG5'; // Sua senha extraída das variáveis
+$user     = 'postgres.dahxpbiljzhkaxwetjza'; 
+$password = 'Xl2DbdCmESCLbSG5';
 
-$db_conectado = false;
+$db_ok = false;
 $erro_db = "";
 
 try {
-    // String de conexão para PostgreSQL
     $dsn = "pgsql:host=$host;port=$port;dbname=$dbname;sslmode=require";
     $db = new PDO($dsn, $user, $password, [
         PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
         PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
     ]);
+    $db_ok = true;
 } catch (PDOException $e) { 
-    // Em produção, você pode trocar o $e->getMessage() por uma frase genérica
-    die("Erro ao conectar ao banco de dados: " . $e->getMessage()); 
+    $db_ok = false;
+    $erro_db = $e->getMessage();
 }
 
-// --- RASTREIO DE CLIQUES ---
-if (isset($_GET['medico_id'])) {
-    // No PostgreSQL, garantimos que o ID seja tratado como inteiro
-    $stmt_click = $db->prepare("UPDATE medicos SET cliques = cliques + 1 WHERE id = ?");
-    $stmt_click->execute([(int)$_GET['medico_id']]);
-}
-
+// --- CONFIGURAÇÕES GERAIS ---
 $zap = "559930781040";
 $dias_pt = ['Sun'=>'Dom', 'Mon'=>'Seg', 'Tue'=>'Ter', 'Wed'=>'Qua', 'Thu'=>'Qui', 'Fri'=>'Sex', 'Sat'=>'Sáb'];
-$meses_pt = ['01'=>'Jan','02'=>'Fev','03'=>'Mar','04'=>'Abr','05'=>'Mai','06'=>'Jun','07'=>'Jul','08'=>'Ago','09'=>'Set','10'=>'Out','11'=>'Nov','12'=>'Dez'];
 
-// Busca Médicos
-$medicos = $db->query("SELECT * FROM medicos ORDER BY id ASC")->fetchAll();
-$medico_id = isset($_GET['medico_id']) ? (int)$_GET['medico_id'] : ($medicos[0]['id'] ?? 0);
-
-// Busca Promoção
-$promo = $db->query("SELECT * FROM promocoes WHERE ativa = 1 LIMIT 1")->fetch();
-
-// Busca apenas datas que possuem horários livres futuros
-$datas_disp = [];
-if ($medico_id) {
-    $hoje = date('Y-m-d');
-    // PostgreSQL usa aspas simples para strings
-    $stmt = $db->prepare("SELECT DISTINCT data_agenda FROM agenda WHERE medico_id = ? AND status = 'disponivel' AND data_agenda >= ? ORDER BY data_agenda ASC");
-    $stmt->execute([$medico_id, $hoje]);
-    $datas_disp = $stmt->fetchAll(PDO::FETCH_COLUMN);
-}
-
-$data_sel = $_GET['data'] ?? ($datas_disp[0] ?? date('Y-m-d'));
-$medico_atual = null;
-$horarios = [];
-
-if ($medico_id) {
-    foreach($medicos as $m) {
-        if($m['id'] == $medico_id) {
-            $medico_atual = $m;
-            break;
-        }
+if ($db_ok) {
+    // --- RASTREIO DE CLIQUES ---
+    if (isset($_GET['medico_id'])) {
+        $stmt_click = $db->prepare("UPDATE medicos SET cliques = cliques + 1 WHERE id = ?");
+        $stmt_click->execute([(int)$_GET['medico_id']]);
     }
-    
-    $stmt = $db->prepare("SELECT * FROM agenda WHERE medico_id = ? AND data_agenda = ? AND status = 'disponivel' ORDER BY hora_agenda ASC");
-    $stmt->execute([$medico_id, $data_sel]);
-    $horarios = $stmt->fetchAll();
+
+    // Busca Médicos
+    $medicos = $db->query("SELECT * FROM medicos ORDER BY id ASC")->fetchAll();
+    $medico_id = isset($_GET['medico_id']) ? (int)$_GET['medico_id'] : ($medicos[0]['id'] ?? 0);
+
+    // Busca Promoção
+    $promo = $db->query("SELECT * FROM promocoes WHERE ativa = 1 LIMIT 1")->fetch();
+
+    // Busca apenas datas com horários disponíveis
+    $datas_disp = [];
+    if ($medico_id) {
+        $hoje = date('Y-m-d');
+        $stmt = $db->prepare("SELECT DISTINCT data_agenda FROM agenda WHERE medico_id = ? AND status = 'disponivel' AND data_agenda >= ? ORDER BY data_agenda ASC");
+        $stmt->execute([$medico_id, $hoje]);
+        $datas_disp = $stmt->fetchAll(PDO::FETCH_COLUMN);
+    }
+
+    $data_sel = $_GET['data'] ?? ($datas_disp[0] ?? date('Y-m-d'));
+    $medico_atual = null;
+    $horarios = [];
+
+    if ($medico_id) {
+        foreach($medicos as $m) {
+            if($m['id'] == $medico_id) { $medico_atual = $m; break; }
+        }
+        $stmt = $db->prepare("SELECT * FROM agenda WHERE medico_id = ? AND data_agenda = ? AND status = 'disponivel' ORDER BY hora_agenda ASC");
+        $stmt->execute([$medico_id, $data_sel]);
+        $horarios = $stmt->fetchAll();
+    }
 }
 ?>
 <!DOCTYPE html>
@@ -77,13 +72,16 @@ if ($medico_id) {
     <title>Agenda Online</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
     <style>
-        /* O seu CSS permanece exatamente o mesmo */
         body { font-family: 'Poppins', sans-serif; margin: 0; background: #f8f9fa; display: flex; justify-content: center; }
-        .app { width: 100%; max-width: 500px; background: white; min-height: 100vh; }
+        .app { width: 100%; max-width: 500px; background: white; min-height: 100vh; position: relative; }
+        
+        /* Promoção */
         .promo-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.95); z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 20px; }
         .promo-box { width: 100%; max-width: 350px; text-align: center; }
         .promo-box img { width: 100%; border-radius: 15px; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
         .btn-close { margin-top: 20px; padding: 12px; width: 100%; background: #007bff; color: white; border: none; border-radius: 30px; font-weight: bold; cursor: pointer; }
+
+        /* Navegação Médicos */
         .doctor-nav { display: flex; overflow-x: auto; padding: 15px; gap: 15px; border-bottom: 1px solid #eee; scrollbar-width: none; }
         .doctor-nav::-webkit-scrollbar { display: none; }
         .doc { min-width: 75px; text-align: center; text-decoration: none; color: #333; opacity: 0.4; transition: 0.3s; }
@@ -91,33 +89,38 @@ if ($medico_id) {
         .doc img { width: 60px; height: 60px; border-radius: 50%; object-fit: cover; border: 3px solid transparent; }
         .doc.active img { border-color: #007bff; }
         .doc span { font-size: 0.7rem; font-weight: 600; display: block; margin-top: 5px; }
+
+        /* Calendário */
         .calendar { display: flex; overflow-x: auto; padding: 15px; gap: 10px; background: #fafafa; scrollbar-width: none; }
         .calendar::-webkit-scrollbar { display: none; }
         .day { min-width: 60px; padding: 12px 5px; background: white; border: 1px solid #eee; border-radius: 15px; text-align: center; text-decoration: none; color: #333; }
         .day.active { background: #007bff; color: white; border-color: #007bff; box-shadow: 0 5px 12px rgba(0,123,255,0.2); }
         .day small { font-size: 0.6rem; text-transform: uppercase; font-weight: 600; display: block; }
+
+        /* Horários */
         .slot { margin: 15px; padding: 18px; border: 1px solid #f0f0f0; border-radius: 18px; display: flex; justify-content: space-between; align-items: center; background: #fff; }
         .btn-zap { background: #007bff; color: white; padding: 10px 20px; border-radius: 10px; text-decoration: none; font-size: 0.85rem; font-weight: bold; }
+        
         .header-dr { text-align: center; padding: 20px; }
         .header-dr h2 { margin: 0; font-size: 1.3rem; }
         .header-dr p { color: #888; margin: 0; font-size: 0.85rem; }
-         /* Estilos da sua agenda... */
+
         .db-status { position: fixed; bottom: 10px; right: 10px; font-size: 10px; padding: 4px 8px; border-radius: 10px; z-index: 999; }
         .db-online { background: #28a745; color: white; opacity: 0.7; }
         .db-offline { background: #dc3545; color: white; }
     </style>
 </head>
 <body>
-<!-- INDICADOR DISCRETO NO CANTO DA TELA -->
-    <?php if($db_ok): ?>
-        <div class="db-status db-online">Sistema Online</div>
-    <?php else: ?>
-        <div class="db-status db-offline">Sistema em Manutenção (DB Offline)</div>
-        <div style="text-align:center; margin-top:50px; color:red;">
-             <h3>Desculpe, nosso sistema está temporariamente fora do ar.</h3>
-             <p>Por favor, tente novamente em alguns instantes.</p>
-        </div>
-    <?php exit; endif; ?>
+
+<?php if(!$db_ok): ?>
+    <div style="text-align:center; padding:50px; color:red; font-family:sans-serif;">
+        <h3>⚠️ Sistema Temporariamente Offline</h3>
+        <p>Erro: <?= $erro_db ?></p>
+    </div>
+<?php exit; endif; ?>
+
+<div class="db-status db-online">● Supabase Online</div>
+
 <?php if ($promo && !isset($_GET['nopro'])): ?>
 <div class="promo-overlay" id="pop">
     <div class="promo-box">
@@ -156,7 +159,9 @@ if ($medico_id) {
         </div>
 
         <div style="padding-bottom: 40px;">
-            <p style="padding-left:20px; font-size:0.7rem; color:#aaa; font-weight:bold; text-transform:uppercase;">Horários para <?= date('d/m', strtotime($data_sel)) ?></p>
+            <p style="padding-left:20px; font-size:0.7rem; color:#aaa; font-weight:bold; text-transform:uppercase;">
+                Horários para <?= date('d/m', strtotime($data_sel)) ?>
+            </p>
             <?php foreach($horarios as $h): ?>
                 <div class="slot">
                     <strong style="font-size:1.2rem; color:#444"><?= htmlspecialchars($h['hora_agenda']) ?></strong>
