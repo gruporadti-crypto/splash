@@ -1,10 +1,16 @@
 <?php
-// --- CONFIGURAÇÕES DE CONEXÃO SUPABASE ---
-$host     = 'xzemserhahccodubenfj.supabase.co';
-$port     = '5432'; 
+
+// ==========================================
+// PARTE 1: CONEXÃO COM OS DADOS DA SUA VERCEL
+// ==========================================
+$host     = 'aws-1-us-east-1.pooler.supabase.com'; 
+$port     = '6543'; 
 $dbname   = 'postgres';
-$user     = 'postgres';
-$password = 'oJxh3BlVcVIuRIW1';
+$user     = 'postgres.dahxpbiljzhkaxwetjza'; // Usuário completo conforme sua URL
+$password = 'Xl2DbdCmESCLbSG5'; // Sua senha extraída das variáveis
+
+$db_conectado = false;
+$erro_db = "";
 
 try {
     // String de conexão para PostgreSQL
