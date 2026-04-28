@@ -1,16 +1,12 @@
 <?php
 session_start();
 
-// ==========================================
-// 1. CONFIGURAÇÕES (SUPABASE)
-// ==========================================
+// --- CONFIGURAÇÕES SUPABASE ---
 $host     = 'aws-1-us-east-1.pooler.supabase.com'; 
 $port     = '6543'; 
 $dbname   = 'postgres';
 $user     = 'postgres.dahxpbiljzhkaxwetjza'; 
 $password = 'Xl2DbdCmESCLbSG5';
-
-// Dados para o Storage (Upload de fotos)
 $supabase_url = "https://dahxpbiljzhkaxwetjza.supabase.co";
 $supabase_key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRhaHhwYmlsanpoa2F4d2V0anphIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzczMzA3MjAsImV4cCI6MjA5MjkwNjcyMH0.ZbXnuBXM3IwQr2LAoH4LDo4YFQy2IPqZMy45Ul7V1TI";
 
@@ -23,204 +19,97 @@ try {
     $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     $db_conectado = true;
 
-    // Criar tabelas se não existirem
+    // Criar tabelas
     $db->exec("CREATE TABLE IF NOT EXISTS usuarios (id SERIAL PRIMARY KEY, usuario TEXT UNIQUE, senha TEXT)");
     $db->exec("CREATE TABLE IF NOT EXISTS medicos (id SERIAL PRIMARY KEY, nome TEXT, especialidade TEXT, foto TEXT, cliques INTEGER DEFAULT 0)");
     $db->exec("CREATE TABLE IF NOT EXISTS agenda (id SERIAL PRIMARY KEY, medico_id INTEGER, data_agenda DATE, hora_agenda TEXT, status TEXT DEFAULT 'disponivel')");
     $db->exec("CREATE TABLE IF NOT EXISTS promocoes (id SERIAL PRIMARY KEY, foto TEXT, ativa INTEGER DEFAULT 0)");
 
-    // Usuário admin padrão
-    $checkUser = $db->query("SELECT COUNT(*) FROM usuarios")->fetchColumn();
-    if ($checkUser == 0) {
-        $senhaHash = password_hash('Radsenha123@', PASSWORD_DEFAULT);
-        $db->prepare("INSERT INTO usuarios (usuario, senha) VALUES (?, ?)")->execute(['admin', $senhaHash]);
+    if ($db->query("SELECT COUNT(*) FROM usuarios")->fetchColumn() == 0) {
+        $hash = password_hash('Radsenha123@', PASSWORD_DEFAULT);
+        $db->prepare("INSERT INTO usuarios (usuario, senha) VALUES ('admin', ?)")->execute([$hash]);
     }
-} catch (PDOException $e) {
-    $db_conectado = false;
-    $erro_db = $e->getMessage();
-}
+} catch (PDOException $e) { $db_conectado = false; $erro_db = $e->getMessage(); }
 
-// --- FUNÇÃO AUXILIAR PARA UPLOAD SUPABASE ---
 function subirParaSupabase($arquivo, $url, $key) {
-    $nomeFinal = time() . "_" . $arquivo['name'];
-    $ch = curl_init();
-    curl_setopt($ch, CURLOPT_URL, "$url/storage/v1/object/uploads/$nomeFinal");
+    $nome = time() . "_" . $arquivo['name'];
+    $ch = curl_init("$url/storage/v1/object/uploads/$nome");
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-    curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "POST");
     curl_setopt($ch, CURLOPT_POSTFIELDS, file_get_contents($arquivo['tmp_name']));
-    curl_setopt($ch, CURLOPT_HTTPHEADER, ["Authorization: Bearer $key", "Content-Type: " . $arquivo['type']]);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, ["Authorization: Bearer $key", "Content-Type: ".$arquivo['type']]);
     $res = curl_exec($ch);
     $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     curl_close($ch);
-    return ($code == 200) ? "$url/storage/v1/object/public/uploads/$nomeFinal" : null;
+    return ($code == 200) ? "$url/storage/v1/object/public/uploads/$nome" : null;
 }
 
-// ==========================================
-// 2. LÓGICA DE LOGIN / LOGOUT
-// ==========================================
-if (isset($_GET['logout'])) { session_destroy(); header("Location: index.php"); exit; }
+if (isset($_GET['logout'])) { session_destroy(); header("Location: ./index.php"); exit; }
 
 if (!isset($_SESSION['logado'])) {
-    $erro_login = "";
     if ($db_conectado && isset($_POST['login'])) {
-        $stmt = $db->prepare("SELECT * FROM usuarios WHERE usuario = ?");
-        $stmt->execute([$_POST['user']]);
-        $u = $stmt->fetch(PDO::FETCH_ASSOC);
-        if ($u && password_verify($_POST['pass'], $u['senha'])) {
-            $_SESSION['logado'] = true;
-            header("Location: index.php"); exit;
-        } else { $erro_login = "Dados incorretos!"; }
+        $st = $db->prepare("SELECT * FROM usuarios WHERE usuario = ?");
+        $st->execute([$_POST['user']]);
+        $u = $st->fetch(PDO::FETCH_ASSOC);
+        if ($u && password_verify($_POST['pass'], $u['senha'])) { $_SESSION['logado'] = true; header("Location: ./index.php"); exit; }
     }
-    ?>
-    <!DOCTYPE html><html lang="pt-br"><head><meta charset="UTF-8"><title>Login Admin</title>
-    <style>
-        body { font-family: sans-serif; background: #f0f2f5; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        .card { background: white; padding: 40px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 100%; max-width: 320px; text-align: center; }
-        input { width: 100%; padding: 12px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
-        button { width: 100%; padding: 12px; background: #007bff; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; }
-    </style></head><body><div class="card"><h2>Área Restrita</h2>
-    <p style="font-size:11px; font-weight:bold; color:<?= $db_conectado?'green':'red'?>"><?= $db_conectado?'● BANCO CONECTADO':'● ERRO: '.$erro_db ?></p>
-    <form method="POST"><?php if($erro_login) echo "<p style='color:red; font-size:13px'>$erro_login</p>"; ?>
-    <input type="text" name="user" placeholder="Usuário" required><input type="password" name="pass" placeholder="Senha" required><button type="submit" name="login">Entrar</button></form></div></body></html>
-    <?php exit;
+    echo '<!DOCTYPE html><html lang="pt-br"><head><meta charset="UTF-8"><title>Login</title><style>body{font-family:sans-serif;background:#f0f2f5;display:flex;justify-content:center;align-items:center;height:100vh;margin:0}.card{background:#fff;padding:40px;border-radius:20px;text-align:center;width:300px}input,button{width:100%;padding:12px;margin-top:10px;border-radius:8px;border:1px solid #ddd;box-sizing:border-box}button{background:#007bff;color:#fff;font-weight:bold;cursor:pointer}</style></head><body><div class="card"><h2>Painel Admin</h2><p style="font-size:10px;color:'.($db_conectado?'green':'red').'">'.($db_conectado?'● BANCO CONECTADO':'● ERRO: '.$erro_db).'</p><form method="POST"><input type="text" name="user" placeholder="Usuário"><input type="password" name="pass" placeholder="Senha"><button type="submit" name="login">Entrar</button></form></div></body></html>';
+    exit;
 }
 
-// ==========================================
-// 3. PROCESSAMENTO DE AÇÕES (POST/GET)
-// ==========================================
-
-// Exclusão
 if (isset($_GET['del_medico'])) {
     $db->prepare("DELETE FROM agenda WHERE medico_id = ?")->execute([$_GET['del_medico']]);
     $db->prepare("DELETE FROM medicos WHERE id = ?")->execute([$_GET['del_medico']]);
-    header("Location: index.php"); exit;
+    header("Location: ./index.php"); exit;
 }
 if (isset($_GET['del_agenda'])) {
     $db->prepare("DELETE FROM agenda WHERE id = ?")->execute([$_GET['del_agenda']]);
-    header("Location: index.php?medico_id=".$_GET['med_id']."&data=".$_GET['data']); exit;
+    header("Location: ./index.php?medico_id=".$_GET['med_id']."&data=".$_GET['data']); exit;
 }
 
-// Cadastro de Médico
-if (isset($_POST['add_medico'])) {
-    $foto = "https://cdn-icons-png.flaticon.com/512/3774/3774299.png";
-    if (isset($_FILES['foto']) && $_FILES['foto']['error'] === 0) {
-        $urlUpload = subirParaSupabase($_FILES['foto'], $supabase_url, $supabase_key);
-        if ($urlUpload) $foto = $urlUpload;
+if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+    if (isset($_POST['add_medico'])) {
+        $foto = "https://cdn-icons-png.flaticon.com/512/3774/3774299.png";
+        if (isset($_FILES['foto']) && $_FILES['foto']['error'] == 0) { $url = subirParaSupabase($_FILES['foto'], $supabase_url, $supabase_key); if($url) $foto=$url; }
+        $db->prepare("INSERT INTO medicos (nome, especialidade, foto) VALUES (?, ?, ?)")->execute([$_POST['nome'], $_POST['especialidade'], $foto]);
     }
-    $db->prepare("INSERT INTO medicos (nome, especialidade, foto, cliques) VALUES (?, ?, ?, 0)")->execute([$_POST['nome'], $_POST['especialidade'], $foto]);
-}
-
-// Adicionar Agenda
-if (isset($_POST['add_agenda'])) {
-    $db->prepare("INSERT INTO agenda (medico_id, data_agenda, hora_agenda) VALUES (?, ?, ?)")->execute([$_POST['medico_id'], $_POST['data'], $_POST['hora']]);
-}
-
-// Salvar Promoção (Popup) - Lógica Corrigida
-if (isset($_POST['save_promo'])) {
-    $ativa = isset($_POST['ativa']) ? 1 : 0;
-    $promo_existente = $db->query("SELECT id, foto FROM promocoes LIMIT 1")->fetch(PDO::FETCH_ASSOC);
-
-    if (isset($_FILES['foto_promo']) && $_FILES['foto_promo']['error'] === 0) {
-        $url_foto_nova = subirParaSupabase($_FILES['foto_promo'], $supabase_url, $supabase_key);
-        if ($url_foto_nova) {
-            $db->exec("DELETE FROM promocoes");
-            $db->prepare("INSERT INTO promocoes (foto, ativa) VALUES (?, ?)")->execute([$url_foto_nova, $ativa]);
-        }
-    } else {
-        if ($promo_existente) {
-            $db->prepare("UPDATE promocoes SET ativa = ? WHERE id = ?")->execute([$ativa, $promo_existente['id']]);
-        }
+    if (isset($_POST['add_agenda'])) {
+        $db->prepare("INSERT INTO agenda (medico_id, data_agenda, hora_agenda) VALUES (?, ?, ?)")->execute([$_POST['medico_id'], $_POST['data'], $_POST['hora']]);
     }
-    header("Location: index.php"); exit;
+    if (isset($_POST['save_promo'])) {
+        $ativa = isset($_POST['ativa']) ? 1 : 0;
+        $link = $_POST['link_promo'] ?: '';
+        if (isset($_FILES['foto_promo']) && $_FILES['foto_promo']['error'] == 0) {
+            $url = subirParaSupabase($_FILES['foto_promo'], $supabase_url, $supabase_key);
+            if ($url) $link = $url;
+        }
+        $db->exec("DELETE FROM promocoes");
+        $db->prepare("INSERT INTO promocoes (foto, ativa) VALUES (?, ?)")->execute([$link, $ativa]);
+        header("Location: ./index.php"); exit;
+    }
 }
 
-// ==========================================
-// 4. BUSCA DE DADOS
-// ==========================================
 $medicos = $db->query("SELECT * FROM medicos ORDER BY cliques DESC")->fetchAll(PDO::FETCH_ASSOC);
 $promo = $db->query("SELECT * FROM promocoes LIMIT 1")->fetch(PDO::FETCH_ASSOC);
-$medico_sel_id = $_GET['medico_id'] ?? ($medicos[0]['id'] ?? 0);
+$med_id = $_GET['medico_id'] ?? ($medicos[0]['id'] ?? 0);
 $data_sel = $_GET['data'] ?? date('Y-m-d');
-$horarios_admin = [];
-if ($medico_sel_id) {
+$horarios = [];
+if ($med_id) {
     $st = $db->prepare("SELECT * FROM agenda WHERE medico_id = ? AND data_agenda = ? ORDER BY hora_agenda ASC");
-    $st->execute([$medico_sel_id, $data_sel]);
-    $horarios_admin = $st->fetchAll(PDO::FETCH_ASSOC);
+    $st->execute([$med_id, $data_sel]);
+    $horarios = $st->fetchAll(PDO::FETCH_ASSOC);
 }
 ?>
-<!DOCTYPE html>
-<html lang="pt-br">
-<head>
-    <meta charset="UTF-8"><title>Painel Admin Clínica</title>
-    <style>
-        body { font-family: sans-serif; background: #f4f7f6; display: flex; flex-wrap: wrap; padding: 20px; gap: 20px; justify-content: center; }
-        .panel { width: 100%; max-width: 450px; background: white; padding: 25px; border-radius: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); overflow-y: auto; max-height: 95vh; }
-        .preview { width: 350px; height: 650px; border: 8px solid #333; border-radius: 40px; overflow: hidden; position: sticky; top: 20px; background: #fff; }
-        @media (max-width: 900px) { .preview { display: none; } }
-        input, select, button { width: 100%; padding: 10px; margin-top: 10px; border-radius: 8px; border: 1px solid #ddd; box-sizing: border-box; }
-        button { background: #007bff; color: white; font-weight: bold; cursor: pointer; border: none; }
-        .report { background: #eef2f7; padding: 15px; border-radius: 10px; margin-bottom: 20px; }
-        .row { display: flex; justify-content: space-between; font-size: 0.85rem; padding: 8px 0; border-bottom: 1px solid #eee; align-items: center; }
-        hr { margin: 25px 0; border: 0; border-top: 1px solid #eee; }
-    </style>
-</head>
-<body>
-    <div class="panel">
-        <div style="display:flex; justify-content:space-between; align-items:center;">
-            <h3>📊 Relatório de Cliques</h3>
-            <a href="?logout=1" style="color:red; font-size:0.8rem; text-decoration:none">Sair</a>
-        </div>
-        
-        <div class="report">
-            <?php foreach($medicos as $m): ?>
-                <div class="row"><span><?= htmlspecialchars($m['nome']) ?></span> <b><?= $m['cliques'] ?> acessos</b></div>
-            <?php endforeach; if(!$medicos) echo "<small>Nenhum dado.</small>"; ?>
-        </div>
-
-        <hr>
-        <form method="POST" enctype="multipart/form-data">
-            <small><b>CADASTRAR NOVO MÉDICO</b></small>
-            <input type="text" name="nome" placeholder="Nome do Médico" required>
-            <input type="text" name="especialidade" placeholder="Especialidade" required>
-            <input type="file" name="foto" accept="image/*">
-            <button type="submit" name="add_medico">Salvar Médico</button>
-        </form>
-        <div style="margin-top:15px">
-            <?php foreach($medicos as $m): ?>
-                <div class="row"><span>Dr(a). <?= $m['nome'] ?></span> <a href="?del_medico=<?= $m['id'] ?>" onclick="return confirm('Excluir médico?')" style="color:red; text-decoration:none">Excluir</a></div>
-            <?php endforeach; ?>
-        </div>
-
-        <hr>
-        <form method="POST">
-            <small><b>GERENCIAR AGENDA</b></small>
-            <select name="medico_id" onchange="window.location.href='index.php?medico_id='+this.value">
-                <option value="">Selecione o Médico...</option>
-                <?php foreach($medicos as $m): ?>
-                    <option value="<?= $m['id'] ?>" <?= $m['id']==$medico_sel_id?'selected':'' ?>><?= $m['nome'] ?></option>
-                <?php endforeach; ?>
-            </select>
-            <input type="date" name="data" value="<?= $data_sel ?>" onchange="window.location.href='index.php?medico_id=<?= $medico_sel_id ?>&data='+this.value">
-            <input type="time" name="hora" required>
-            <button type="submit" name="add_agenda" style="background:#28a745">Adicionar Vaga</button>
-        </form>
-        <div style="margin-top:15px; background: #fafafa; padding: 10px; border-radius: 8px;">
-            <?php foreach($horarios_admin as $ha): ?>
-                <div class="row"><span><?= $ha['hora_agenda'] ?></span> <a href="?del_agenda=<?= $ha['id'] ?>&med_id=<?= $medico_sel_id ?>&data=<?= $data_sel ?>" style="color:red; text-decoration:none">Remover</a></div>
-            <?php endforeach; ?>
-        </div>
-
-        <hr>
-        <form method="POST" enctype="multipart/form-data">
-            <small><b>PROMOÇÃO (POPUP)</b></small><br>
-            <label style="font-size:0.85rem"><input type="checkbox" name="ativa" <?= ($promo['ativa'] ?? 0) ? 'checked' : '' ?>> Exibir Banner Promocional</label>
-            <input type="file" name="foto_promo" accept="image/*">
-            <button type="submit" name="save_promo" style="background:#ffc107; color:black">Salvar Promoção</button>
-        </form>
-    </div>
-
-    <div class="preview">
-        <iframe src="agenda.php?medico_id=<?= $medico_sel_id ?>&data=<?= $data_sel ?>" style="width:100%; height:100%; border:none"></iframe>
-    </div>
-</body>
-</html>
+<!DOCTYPE html><html lang="pt-br"><head><meta charset="UTF-8"><title>Admin</title><style>body{font-family:sans-serif;background:#f4f7f6;display:flex;justify-content:center;padding:20px;gap:20px}.panel{width:450px;background:#fff;padding:25px;border-radius:15px;box-shadow:0 5px 15px rgba(0,0,0,0.1)}.row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #eee;font-size:13px}input,select,button{width:100%;padding:10px;margin-top:10px;border-radius:8px;border:1px solid #ddd;box-sizing:border-box}button{background:#007bff;color:#fff;font-weight:bold;cursor:pointer;border:none}.preview{width:350px;height:650px;border:8px solid #333;border-radius:40px;overflow:hidden;position:sticky;top:20px}@media(max-width:900px){.preview{display:none}}</style></head><body>
+<div class="panel">
+    <div style="display:flex;justify-content:space-between"><h3>📊 Relatório</h3><a href="?logout=1" style="color:red;text-decoration:none">Sair</a></div>
+    <?php foreach($medicos as $m): ?><div class="row"><span><?= $m['nome'] ?></span><b><?= $m['cliques'] ?> acessos</b></div><?php endforeach; ?>
+    <hr>
+    <form method="POST" enctype="multipart/form-data"><small>NOVO MÉDICO</small><input type="text" name="nome" placeholder="Nome"><input type="text" name="especialidade" placeholder="Especialidade"><input type="file" name="foto"><button name="add_medico">Salvar Médico</button></form>
+    <hr>
+    <form method="POST"><small>AGENDA</small><select name="medico_id" onchange="location.href='?medico_id='+this.value"><?php foreach($medicos as $m): ?><option value="<?= $m['id'] ?>" <?= $m['id']==$med_id?'selected':'' ?>><?= $m['nome'] ?></option><?php endforeach; ?></select><input type="date" name="data" value="<?= $data_sel ?>" onchange="location.href='?medico_id=<?= $med_id ?>&data='+this.value"><input type="time" name="hora"><button name="add_agenda" style="background:#28a745">Adicionar Vaga</button></form>
+    <div style="margin-top:10px"><?php foreach($horarios as $h): ?><div class="row"><span><?= $h['hora_agenda'] ?></span><a href="?del_agenda=<?= $h['id'] ?>&med_id=<?= $med_id ?>&data=<?= $data_sel ?>" style="color:red">Remover</a></div><?php endforeach; ?></div>
+    <hr>
+    <form method="POST" enctype="multipart/form-data"><small>PROMOÇÃO (POPUP)</small><br><label><input type="checkbox" name="ativa" <?= ($promo['ativa']??0)?'checked':'' ?>> Exibir Banner</label><input type="text" name="link_promo" placeholder="Link (Drive/YouTube)" value="<?= $promo['foto']??'' ?>"><input type="file" name="foto_promo"><button name="save_promo" style="background:#ffc107;color:#000">Salvar Promoção</button></form>
+</div>
+<div class="preview"><iframe src="agenda.php?medico_id=<?= $med_id ?>" style="width:100%;height:100%;border:none"></iframe></div>
+</body></html>
